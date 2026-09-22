@@ -29,7 +29,7 @@ const outDir = mkdtempSync(join(tmpdir(), 'dsh-office-render-test-'))
 
 await build({
   absWorkingDir: root,
-  entryPoints: ['src/host/render-core.ts', 'src/index.ts', 'src/client/index.tsx', 'src/client/pdfUrl.ts'],
+  entryPoints: ['src/host/render-core.ts', 'src/index.ts', 'src/client/index.tsx'],
   outdir: outDir,
   outExtension: { '.js': '.mjs' },
   bundle: true,
@@ -47,7 +47,6 @@ await build({
 const core = await import(pathToFileURL(join(outDir, 'host', 'render-core.mjs')).href)
 const host = await import(pathToFileURL(join(outDir, 'index.mjs')).href)
 const client = await import(pathToFileURL(join(outDir, 'client', 'index.mjs')).href)
-const pdfUrl = await import(pathToFileURL(join(outDir, 'client', 'pdfUrl.mjs')).href)
 
 // ── a minimal, correct zip writer (fixture only) ─────────────────────────────
 
@@ -626,16 +625,6 @@ await check('a missing sidebar warns instead of throwing', async () => {
     console.warn = originalWarn
   }
   assert.ok(logs.some(line => line.includes('betterSidebar')))
-})
-
-await check('the viewer URL fits the page to the frame, and replaces any fragment', () => {
-  const src = pdfUrl.pdfViewerSrc('blob:http://127.0.0.1:5173/9f3c-4a1b')
-  assert.equal(src, 'blob:http://127.0.0.1:5173/9f3c-4a1b#view=FitH')
-
-  // Appending to an existing fragment would leave the first one in force and
-  // silently drop the view mode, so the old fragment must be replaced.
-  assert.equal(pdfUrl.pdfViewerSrc('blob:x#page=3'), 'blob:x#view=FitH')
-  assert.equal(pdfUrl.pdfViewerSrc('https://host/a.pdf#zoom=200'), 'https://host/a.pdf#view=FitH')
 })
 
 await check('the converted PDF keeps its own page geometry, unscaled by us', async () => {

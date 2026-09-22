@@ -4,7 +4,42 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] — 2026-09-23
+
+### Changed
+
+- **Reverted the `#view=FitH` fragment added in 0.1.1.** It was measured to
+  change nothing: rendering the same document into frames of known width, the
+  page occupied 95.2% (320 px frame) and 97.1% (640 px frame) of the frame with
+  and without the fragment, to the pixel. The fragment was not the reason the
+  page fits, so keeping it would have left a line of code claiming credit for
+  behaviour the viewer provides on its own. The first measurement attempt was
+  confounded — the frames shared one document URL and the viewer remembers zoom
+  per URL for the session, which made the two frames identical by construction.
+
+### Documented (measured, replacing the 0.1.1 claim)
+
+| Case | Frame inner | Rendered page | Page / frame |
+|---|---|---|---|
+| 320 px frame on load | 316 px | 301 px | 95.2% — fits |
+| 640 px frame on load | 636 px | 619 px | 97.1% — fits |
+| frame widened 320 → 640 after load | 636 px | 301 px | **47.3% — does not re-fit** |
+
+- The embedded viewer already fits the page to the frame width when it loads.
+- The real gap is a **later** resize: the viewer keeps the zoom it loaded with.
+  Its toolbar has zoom and fit controls, so it is recoverable by hand; making it
+  automatic means remounting the frame, which resets the reader to page 1 — a
+  trade-off not taken silently here.
+- The converted page geometry is the document's own, 1:1, and the suite imposes
+  no page-width limit (45 pt … 3000 pt all round-tripped exactly).
+- Narrowing the page during conversion reflows below the document's own text
+  column: measured 2 pages → 3. A PDF can be zoomed; it cannot reflow.
+
 ## [0.1.1] — 2026-09-23
+
+> Superseded by 0.1.2: the fix below was measured to have no effect and has been
+> reverted. The measurements in that entry are still worth keeping, so they were
+> carried forward.
 
 ### Fixed
 

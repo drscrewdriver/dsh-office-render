@@ -92,7 +92,7 @@ conversion of a real `.docx` through the real shipped converter script.
 Response headers on a successful conversion: `X-Office-Render-Engine`,
 `X-Office-Render-Kind`, `X-Office-Render-Cache` (`hit`/`miss`).
 
-## Width: the PDF is zoomed, never reflowed
+## Width: what the PDF viewer actually does (all measured)
 
 A PDF page has a fixed geometry, and **the converter does not invent it** — the
 page size comes from the document itself, reproduced 1:1:
@@ -106,29 +106,45 @@ The suite also imposes no limit of its own: measurably, page widths from 45 pt
 (15.9 mm) up to 3000 pt (41.7 in) all came back at exactly the requested size,
 with 0.0 pt deviation — well past the 22 in ceiling Word's own UI enforces.
 
-That means "the PDF does not fit my sidebar" is a **display** problem, and the
-only width adaptation a PDF has is **zoom**. So the viewer points its frame at
-`<pdf-url>#view=FitH`, which scales the page to the frame width. Without it,
-Chromium renders at 100% and an A4 page (≈794 CSS px wide) simply overflows a
-narrow sidebar with a horizontal scrollbar.
+Because the page is fixed, all the width adaptation available to it is **zoom**.
+What the embedded viewer does with that zoom, measured in Chrome by rendering
+the same document into frames of known width and measuring the rendered paper:
 
-**What this plugin deliberately does NOT do is narrow the page during
-conversion.** It is possible — the suite honours whatever page width you set —
-but it reflows the document instead of scaling it. Measured on a real 2-page
-`.docx`:
-
-| Strategy | Page width | Page count | Verdict |
+| Case | Frame inner width | Rendered page | Page / frame |
 |---|---|---|---|
-| as-is | 595.3 pt | 2 | reference |
-| trim margins to the text column | 487.3 pt | **2** | layout preserved (−18% paper, +22% apparent text at the same pane) |
-| narrow the paper, keep margins | 487.3 pt | **3** | reflowed |
-| force 300 pt | 300.0 pt | **3** | reflowed |
+| 320 px frame, plain URL, on load | 316 px | 301 px | **95.2%** — fits |
+| 640 px frame, plain URL, on load | 636 px | 619 px | **97.1%** — fits |
+| 320 px frame, URL + `#view=FitH` | 316 px | 301 px | 95.2% — *identical* |
+| 640 px frame, URL + `#view=FitH` | 636 px | 619 px | 97.1% — *identical* |
+| frame widened 320 → 640 **after** load | 636 px | 301 px | **47.3%** — does not re-fit |
 
-So the honest limit is: a page can only be narrowed down to its own text column
-before the line breaks change. Below that it is no longer a faithful render, it
-is a re-typeset document — which is exactly what the structured reading views
-(`dsh-docx-sidebar` / `dsh-pptx-sidebar`) are for, since those reflow on purpose
-and scale their type with the pane.
+Three things follow, and the first two are the opposite of what this project
+originally assumed:
+
+1. **It already fits the pane width when it loads.** No fragment is needed, and
+   the `#view=FitH` fragment that briefly shipped here was measured to change
+   nothing at all (0 px difference) — it has been removed rather than left in
+   place looking like the reason.
+2. **A later resize is the real gap.** The viewer keeps the zoom it loaded with,
+   so widening the pane leaves the page small. Its own toolbar offers zoom and
+   fit controls, so this is recoverable by hand. Making it automatic would mean
+   remounting the frame on a settled resize, which resets the reader to page 1 —
+   a trade-off we chose not to make silently.
+3. **Narrowing the page during conversion is possible but reflows.** Measured on
+   a real 2-page `.docx`:
+
+   | Strategy | Page width | Page count | Verdict |
+   |---|---|---|---|
+   | as-is | 595.3 pt | 2 | reference |
+   | trim margins to the text column | 487.3 pt | **2** | layout preserved (−18% paper, +22% apparent text at the same pane) |
+   | narrow the paper, keep margins | 487.3 pt | **3** | reflowed |
+   | force 300 pt | 300.0 pt | **3** | reflowed |
+
+   The honest limit: a page can only be narrowed down to its own text column
+   before the line breaks change. Below that it is a re-typeset document, not a
+   faithful render — which is what the structured reading views
+   (`dsh-docx-sidebar` / `dsh-pptx-sidebar`) are for, since those reflow on
+   purpose and scale their type with the pane.
 
 ## Limits, and what they cost
 

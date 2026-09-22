@@ -11,7 +11,6 @@
  * no path: the PDF exists only in the host's temp cache and in this blob.
  */
 import { useCallback, useEffect, useState } from 'react'
-import { pdfViewerSrc } from './pdfUrl'
 import { formatBytes } from './utils'
 import { basename } from './utils'
 import type { OfficeKind } from './types'
@@ -156,13 +155,15 @@ export function OfficePdfViewer({ path, title, customData, t, convertPath, kind,
         {/* The one thing a reader must not have to guess: this is a PDF, not the
             original file being rendered by its own editor. */}
         <span className="off-head__badge">{t('badge')}</span>
-        <a className="off-head__link" href={pdfViewerSrc(url)} target="_blank" rel="noreferrer">
+        <a className="off-head__link" href={url} target="_blank" rel="noreferrer">
           {t('state.openPdf')}
         </a>
       </div>
-      {/* FitH: the page is scaled to the pane width. A PDF cannot reflow, so
-          zoom is the only width adaptation it has — see `pdfUrl.ts`. */}
-      <iframe className="off-frame" src={pdfViewerSrc(url)} title={fileName} />
+      {/* No URL fragment here, deliberately. Chromium's embedded viewer already
+          fits the page to the frame width when it loads (measured), and
+          `#view=FitH` was measured to change nothing at all — see the README.
+          The gap it does NOT cover is a later resize: see "known behaviours". */}
+      <iframe className="off-frame" src={url} title={fileName} />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 {
   "id": "dsh-external/dsh-office-render",
   "name": "dsh-office-render",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": {
     "en": "Faithful sidebar rendering for .docx / .pptx by converting them to PDF with a locally installed Office-compatible suite (WPS Office or Microsoft Office) and handing the result to the sidebar's built-in PDF viewer. Registers its viewers only when a converter is actually available, so the structured reading views still serve machines without one.",
     "zh": "用本机已安装的 Office 兼容套件（WPS Office 或 Microsoft Office）把 .docx / .pptx 转成 PDF，交给侧栏内置 PDF 预览器，实现版式还原。只有在检测到可用转换器时才注册预览器，因此没有转换器的机器仍由结构化阅读视图接手。"
