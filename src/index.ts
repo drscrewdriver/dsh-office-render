@@ -242,6 +242,25 @@ async function probe(refresh: boolean): Promise<ProbeResult & { powershell?: str
   return { ...result, powershell: powershellPath() }
 }
 
+/** What we remember about one cached PDF, so a cache hit can still name its engine. */
+interface CacheMeta {
+  engine?: string
+  kind: OfficeKind
+  bytes: number
+  createdAt: number
+}
+
+/** Read the sidecar metadata for a cached artifact; absent or broken is fine. */
+async function readMeta(path: string): Promise<CacheMeta | undefined> {
+  try {
+    const raw = await readFile(path, 'utf8')
+    const parsed = JSON.parse(raw) as Partial<CacheMeta>
+    return typeof parsed.kind === 'string' ? (parsed as CacheMeta) : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** Convert one uploaded document, using or filling the cache. */
 async function convertBytes(
   payload: Uint8Array,
@@ -260,10 +279,19 @@ async function convertBytes(
 
   const key = cacheKey(payload, kind, bytes => createHash('sha256').update(bytes).digest('hex'))
   const outputPath = join(dir, `out-${key}.pdf`)
+  const metaPath = join(dir, `meta-${key}.json`)
 
   const cached = await readFile(outputPath).catch(() => undefined)
   if (cached !== undefined && cached.byteLength > 0) {
-    return { ok: true, pdf: new Uint8Array(cached), cached: true }
+    // The sidecar is what lets a hit report the same engine a miss did; without
+    // it the label would vanish on every view after the first.
+    const meta = await readMeta(metaPath)
+    return {
+      ok: true,
+      pdf: new Uint8Array(cached),
+      ...(meta?.engine !== undefined ? { engine: meta.engine } : {}),
+      cached: true,
+    }
   }
 
   const inputPath = join(dir, `in-${key}.${kind === 'docx' ? 'docx' : 'pptx'}`)
@@ -288,6 +316,13 @@ async function convertBytes(
     if (pdf === undefined || pdf.byteLength === 0) {
       return { ok: false, error: 'the converter reported success but wrote no output', status: 502 }
     }
+    const meta: CacheMeta = {
+      ...(result.engine !== undefined ? { engine: result.engine } : {}),
+      kind,
+      bytes: pdf.byteLength,
+      createdAt: Date.now(),
+    }
+    await writeFile(metaPath, JSON.stringify(meta)).catch(() => undefined)
     return { ok: true, pdf: new Uint8Array(pdf), ...(result.engine !== undefined ? { engine: result.engine } : {}), cached: false }
   } finally {
     // The input is a copy of bytes the host already has; the PDF is the artifact

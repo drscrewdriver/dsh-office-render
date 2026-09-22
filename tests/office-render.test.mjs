@@ -486,6 +486,9 @@ if (!available.includes('docx')) {
     assert.equal(second.headers['x-office-render-cache'], 'hit')
     // Same document, same bytes.
     assert.equal(second.body.byteLength, first.body.byteLength)
+    // And the engine is still named: after the first view every view is a hit,
+    // so a hit that forgets the engine would never show it at all.
+    assert.equal(second.headers['x-office-render-engine'], first.headers['x-office-render-engine'])
   })
 }
 

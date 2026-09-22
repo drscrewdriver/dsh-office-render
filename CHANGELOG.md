@@ -20,7 +20,10 @@ Office-compatible suite installed on the host machine.
   by magic number before claiming success. Paths arrive as argv because Windows
   PowerShell 5.1 decodes a BOM-less `.ps1` as ANSI.
 - Content-hash PDF cache in the OS temp directory, swept by age (7 days) and
-  count (200) on first use, with a configurable location.
+  count (200) on first use, with a configurable location. A sidecar file records
+  the engine that produced each artifact, so a cache hit still names it — after
+  the first view every view is a hit, and an unnamed hit would mean the label
+  never showed at all.
 - Serialized conversions: one COM suite at a time, with a 120 s timeout that
   kills the process tree.
 - Conditional viewer registration: the client probes `/health` and only claims
