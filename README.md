@@ -92,6 +92,44 @@ conversion of a real `.docx` through the real shipped converter script.
 Response headers on a successful conversion: `X-Office-Render-Engine`,
 `X-Office-Render-Kind`, `X-Office-Render-Cache` (`hit`/`miss`).
 
+## Width: the PDF is zoomed, never reflowed
+
+A PDF page has a fixed geometry, and **the converter does not invent it** — the
+page size comes from the document itself, reproduced 1:1:
+
+| Source declares | Converted PDF |
+|---|---|
+| `w:pgSz w=11906 h=16838` (A4) | `/MediaBox [0 0 595.3 841.9]` |
+| `p:sldSz cx=12192000 cy=6858000` (16:9) | `/MediaBox [0 0 960 540]` |
+
+The suite also imposes no limit of its own: measurably, page widths from 45 pt
+(15.9 mm) up to 3000 pt (41.7 in) all came back at exactly the requested size,
+with 0.0 pt deviation — well past the 22 in ceiling Word's own UI enforces.
+
+That means "the PDF does not fit my sidebar" is a **display** problem, and the
+only width adaptation a PDF has is **zoom**. So the viewer points its frame at
+`<pdf-url>#view=FitH`, which scales the page to the frame width. Without it,
+Chromium renders at 100% and an A4 page (≈794 CSS px wide) simply overflows a
+narrow sidebar with a horizontal scrollbar.
+
+**What this plugin deliberately does NOT do is narrow the page during
+conversion.** It is possible — the suite honours whatever page width you set —
+but it reflows the document instead of scaling it. Measured on a real 2-page
+`.docx`:
+
+| Strategy | Page width | Page count | Verdict |
+|---|---|---|---|
+| as-is | 595.3 pt | 2 | reference |
+| trim margins to the text column | 487.3 pt | **2** | layout preserved (−18% paper, +22% apparent text at the same pane) |
+| narrow the paper, keep margins | 487.3 pt | **3** | reflowed |
+| force 300 pt | 300.0 pt | **3** | reflowed |
+
+So the honest limit is: a page can only be narrowed down to its own text column
+before the line breaks change. Below that it is no longer a faithful render, it
+is a re-typeset document — which is exactly what the structured reading views
+(`dsh-docx-sidebar` / `dsh-pptx-sidebar`) are for, since those reflow on purpose
+and scale their type with the pane.
+
 ## Limits, and what they cost
 
 | Setting | Default | Why |

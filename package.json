@@ -1,6 +1,6 @@
 {
   "name": "dsh-office-render",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DSH plugin: render .docx / .pptx / .xlsx in the sidebar with faithful layout by converting them to PDF through a locally installed Office-compatible suite (WPS Office or Microsoft Office), then handing the PDF to the sidebar's built-in PDF viewer. Falls back to whatever viewer would otherwise claim the extension when no converter is available.",
   "type": "module",
   "main": "lib/index.mjs",

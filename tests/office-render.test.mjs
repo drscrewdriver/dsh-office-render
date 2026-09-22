@@ -29,7 +29,7 @@ const outDir = mkdtempSync(join(tmpdir(), 'dsh-office-render-test-'))
 
 await build({
   absWorkingDir: root,
-  entryPoints: ['src/host/render-core.ts', 'src/index.ts', 'src/client/index.tsx'],
+  entryPoints: ['src/host/render-core.ts', 'src/index.ts', 'src/client/index.tsx', 'src/client/pdfUrl.ts'],
   outdir: outDir,
   outExtension: { '.js': '.mjs' },
   bundle: true,
@@ -47,6 +47,7 @@ await build({
 const core = await import(pathToFileURL(join(outDir, 'host', 'render-core.mjs')).href)
 const host = await import(pathToFileURL(join(outDir, 'index.mjs')).href)
 const client = await import(pathToFileURL(join(outDir, 'client', 'index.mjs')).href)
+const pdfUrl = await import(pathToFileURL(join(outDir, 'client', 'pdfUrl.mjs')).href)
 
 // ── a minimal, correct zip writer (fixture only) ─────────────────────────────
 
@@ -625,6 +626,34 @@ await check('a missing sidebar warns instead of throwing', async () => {
     console.warn = originalWarn
   }
   assert.ok(logs.some(line => line.includes('betterSidebar')))
+})
+
+await check('the viewer URL fits the page to the frame, and replaces any fragment', () => {
+  const src = pdfUrl.pdfViewerSrc('blob:http://127.0.0.1:5173/9f3c-4a1b')
+  assert.equal(src, 'blob:http://127.0.0.1:5173/9f3c-4a1b#view=FitH')
+
+  // Appending to an existing fragment would leave the first one in force and
+  // silently drop the view mode, so the old fragment must be replaced.
+  assert.equal(pdfUrl.pdfViewerSrc('blob:x#page=3'), 'blob:x#view=FitH')
+  assert.equal(pdfUrl.pdfViewerSrc('https://host/a.pdf#zoom=200'), 'https://host/a.pdf#view=FitH')
+})
+
+await check('the converted PDF keeps its own page geometry, unscaled by us', async () => {
+  if (!available.includes('docx')) return
+  const result = await callRoute(route, {
+    url: '/office-render/convert?ext=docx',
+    method: 'POST',
+    body: MINIMAL_DOCX,
+  })
+  assert.equal(result.status, 200)
+  // The width adaptation for this path happens in the VIEWER (FitH), never here:
+  // rewriting the page setup to get a narrower PDF reflows the document instead
+  // of scaling it, which is the one thing the reading views exist to avoid.
+  const box = /\/MediaBox\s*\[([^\]]*)\]/.exec(result.body.toString('latin1'))
+  assert.ok(box !== null, 'the PDF carries no MediaBox')
+  const [, , width, height] = box[1].split(/\s+/).map(Number)
+  assert.ok(width > 0 && height > 0, `implausible page geometry ${width}x${height}`)
+  console.log(`      generated fixture page: ${width.toFixed(1)} x ${height.toFixed(1)} pt`)
 })
 
 rmSync(outDir, { recursive: true, force: true })

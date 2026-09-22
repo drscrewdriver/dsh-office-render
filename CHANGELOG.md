@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-09-23
+
+### Fixed
+
+- **The PDF now fits the pane.** The viewer frame points at
+  `<pdf-url>#view=FitH`, so the browser's PDF renderer scales the page to the
+  frame width. Previously it rendered at 100%, which meant an A4 page (≈794 CSS
+  px) overflowed any sidebar narrower than that and produced a horizontal
+  scrollbar — the "the PDF does not adapt" symptom.
+- An existing URL fragment is replaced rather than appended to, so
+  `#page=3`-style fragments cannot silently suppress the view mode.
+
+### Documented (measured, not assumed)
+
+- The converted page geometry is the document's own, 1:1: `w:pgSz` 11906×16838
+  twips → `[0 0 595.3 841.9]`, `p:sldSz` 12192000×6858000 EMU → `[0 0 960 540]`.
+- The suite imposes no page-width limit of its own: 45 pt through 3000 pt
+  (41.7 in) all round-tripped at exactly the requested size.
+- Widening/narrowing the page during conversion is therefore possible but is
+  **not** done: measured on a 2-page deck, removing the margins preserves both
+  the text column and the page count, while any narrower page reflows it
+  (2 → 3 pages). A PDF can be zoomed; it cannot reflow.
+
 ## [0.1.0] — 2026-09-23
 
 First release. Faithful layout for `.docx` / `.pptx` by converting to PDF with an
