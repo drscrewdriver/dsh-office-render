@@ -29,7 +29,7 @@ const outDir = mkdtempSync(join(tmpdir(), 'dsh-office-render-test-'))
 
 await build({
   absWorkingDir: root,
-  entryPoints: ['src/host/render-core.ts', 'src/index.ts'],
+  entryPoints: ['src/host/render-core.ts', 'src/index.ts', 'src/client/index.tsx'],
   outdir: outDir,
   outExtension: { '.js': '.mjs' },
   bundle: true,
@@ -37,11 +37,16 @@ await build({
   platform: 'node',
   target: 'node20',
   external: ['node:*'],
+  // Unlike the shipped build, react is bundled here: the test bundle lands in a
+  // temp directory with no node_modules, so an externalised bare import could
+  // not resolve.
+  loader: { '.css': 'text' },
   logLevel: 'warning',
 })
 
 const core = await import(pathToFileURL(join(outDir, 'host', 'render-core.mjs')).href)
 const host = await import(pathToFileURL(join(outDir, 'index.mjs')).href)
+const client = await import(pathToFileURL(join(outDir, 'client', 'index.mjs')).href)
 
 // ── a minimal, correct zip writer (fixture only) ─────────────────────────────
 
@@ -491,6 +496,136 @@ if (!available.includes('docx')) {
     assert.equal(second.headers['x-office-render-engine'], first.headers['x-office-render-engine'])
   })
 }
+
+// ── the client half: conditional registration ────────────────────────────────
+
+// `apply` injects a <style> tag, so Node needs just enough of a document.
+const fakeDocument = {
+  getElementById: () => null,
+  createElement: () => ({ id: '', textContent: '', remove: () => {} }),
+  head: { appendChild: () => {} },
+}
+
+/**
+ * Run the client half once against a stubbed health response.
+ *
+ * A fresh module instance per case (`?case=N`) is required, not pedantic: the
+ * client caches its probe per module load, so a second case in the same instance
+ * would silently assert against the first case's answer.
+ */
+async function runClient(healthBody, caseId) {
+  const registered = []
+  const logs = []
+  const originalFetch = globalThis.fetch
+  const originalLog = console.log
+  const originalWarn = console.warn
+  const originalDocument = globalThis.document
+
+  globalThis.document = fakeDocument
+  globalThis.fetch = async url => {
+    await Promise.resolve()
+    return { ok: true, json: async () => healthBody, url: String(url) }
+  }
+  console.log = (...args) => logs.push(args.join(' '))
+  console.warn = (...args) => logs.push(args.join(' '))
+
+  try {
+    const instance = await import(`${pathToFileURL(join(outDir, 'client', 'index.mjs')).href}?case=${caseId}`)
+    instance.apply({
+      effect(factory) {
+        factory()
+      },
+      betterSidebar: {
+        registerFileViewer(descriptor) {
+          registered.push(descriptor)
+          return () => {}
+        },
+      },
+      // Deliberately no locale service: the built-in English fallback has to be
+      // enough for the plugin to work at all.
+    })
+    // Registration lands one microtask after the probe resolves.
+    for (let tick = 0; tick < 5; tick++) await Promise.resolve()
+  } finally {
+    globalThis.fetch = originalFetch
+    globalThis.document = originalDocument
+    console.log = originalLog
+    console.warn = originalWarn
+  }
+  return { registered, logs }
+}
+
+const HEALTH_BASE = {
+  ok: true,
+  service: 'dsh-office-render',
+  version: '0.1.0',
+  convertPath: '/office-render/convert',
+  engines: {},
+}
+
+await check('with no converter available the client registers NOTHING', async () => {
+  const { registered, logs } = await runClient({ ...HEALTH_BASE, kinds: [] }, 1)
+  // This is the fallback story in one assertion: claiming an extension we cannot
+  // render would replace a working reading view with an error page.
+  assert.equal(registered.length, 0)
+  assert.ok(
+    logs.some(line => line.includes('不注册预览器')),
+    `expected an explanatory log, got: ${logs.join(' | ')}`,
+  )
+})
+
+await check('with a converter available the client claims only that kind', async () => {
+  const { registered, logs } = await runClient(
+    { ...HEALTH_BASE, kinds: ['docx'], engines: { docx: 'KWPS.Application' } },
+    2,
+  )
+  assert.equal(registered.length, 1)
+  const viewer = registered[0]
+  assert.equal(viewer.id, 'dsh-office-render:docx')
+  assert.equal(viewer.fetchStrategy, 'custom')
+  assert.deepEqual(viewer.exts, ['docx', 'docm', 'dotx'])
+  // Above the structured reading views (50), or this plugin would never win.
+  assert.ok(viewer.priority > 50, `priority ${viewer.priority} must outrank the reading views`)
+  assert.equal(typeof viewer.load, 'function')
+  assert.equal(typeof viewer.component, 'function')
+  assert.equal(typeof viewer.title(), 'string')
+  assert.ok(!viewer.exts.includes('xlsx'), 'a spreadsheet belongs to the sibling plugin')
+  assert.ok(logs.some(line => line.includes('KWPS.Application')), 'the engine should be reported')
+})
+
+await check('both kinds register two viewers with distinct ids', async () => {
+  const { registered } = await runClient(
+    { ...HEALTH_BASE, kinds: ['docx', 'pptx'], engines: { docx: 'KWPS.Application', pptx: 'KWPP.Application' } },
+    3,
+  )
+  assert.deepEqual(
+    registered.map(viewer => viewer.id).sort(),
+    ['dsh-office-render:docx', 'dsh-office-render:pptx'],
+  )
+})
+
+await check('a missing sidebar warns instead of throwing', async () => {
+  const logs = []
+  const originalLog = console.log
+  const originalWarn = console.warn
+  const originalDocument = globalThis.document
+  globalThis.document = fakeDocument
+  console.log = (...args) => logs.push(args.join(' '))
+  console.warn = (...args) => logs.push(args.join(' '))
+  try {
+    const instance = await import(`${pathToFileURL(join(outDir, 'client', 'index.mjs')).href}?case=4`)
+    instance.apply({
+      effect(factory) {
+        factory()
+      },
+    })
+  } finally {
+    globalThis.document = originalDocument
+    console.log = originalLog
+    console.warn = originalWarn
+  }
+  assert.ok(logs.some(line => line.includes('betterSidebar')))
+})
 
 rmSync(outDir, { recursive: true, force: true })
 rmSync(cacheRoot, { recursive: true, force: true })
