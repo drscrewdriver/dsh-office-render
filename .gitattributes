@@ -1,0 +1,5 @@
+# Freeze bytes: the shipped artifacts under lib/ are exactly what the build
+# verified (its hash must survive clone → install), and the sources are authored
+# with LF. Without this, core.autocrlf=true rewrites line endings on checkout
+# and the installed bundle stops matching the verified hash.
+* -text

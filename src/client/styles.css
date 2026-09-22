@@ -1,0 +1,154 @@
+/*
+ * dsh-office-render — stylesheet.
+ *
+ * Injected at runtime: a DSH plugin has no CSS entry point, so the build inlines
+ * this file as a string and `apply` appends one <style> tag inside a
+ * `ctx.effect`, whose disposer removes it on unload.
+ *
+ * Every colour is a DSH design token (`--dsw-alias-*`) with a neutral fallback,
+ * so the frame follows the active skin.
+ */
+
+.off-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--dsw-alias-label-primary, #e6e6e6);
+}
+
+/* ── Header strip ────────────────────────────────────────────────────────── */
+
+.off-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, #2a2a2a);
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary, #aaa);
+}
+
+.off-head__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+  color: var(--dsw-alias-label-primary, #e6e6e6);
+}
+
+.off-head__tag {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  background: var(--dsw-alias-interactive-bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+/* The one thing a reader must not have to guess. */
+.off-head__badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  border: 1px solid var(--dsw-alias-border-l2, #3a3a3a);
+  color: var(--dsw-alias-label-caption, #888);
+}
+
+.off-head__link {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--dsw-alias-brand-primary, #60a5fa);
+  text-decoration: none;
+}
+
+.off-head__link:hover {
+  text-decoration: underline;
+}
+
+/* ── The PDF surface ─────────────────────────────────────────────────────── */
+
+/* `flex: 1` plus `min-height: 0` is what lets an iframe shrink inside a flex
+   column; without the second one the frame ignores the container height. */
+.off-frame {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  background: var(--dsw-alias-bg-layer-1, #1e1e1e);
+}
+
+/* ── Loading / error ─────────────────────────────────────────────────────── */
+
+.off-loading,
+.off-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--dsw-alias-label-tertiary, #888);
+}
+
+.off-error__title {
+  font-size: 13px;
+  color: var(--dsw-alias-state-error-primary, #ef4444);
+}
+
+.off-error__message {
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary, #aaa);
+  max-width: 320px;
+  overflow-wrap: anywhere;
+}
+
+.off-error__hint {
+  font-size: 11px;
+  color: var(--dsw-alias-label-caption, #777);
+  max-width: 320px;
+}
+
+.off-retry {
+  padding: 4px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2, #3a3a3a);
+  background: var(--dsw-alias-bg-layer-3, transparent);
+  color: var(--dsw-alias-label-primary, #e6e6e6);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.off-retry:hover {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.off-loading__hint {
+  font-size: 11px;
+  color: var(--dsw-alias-label-caption, #777);
+  max-width: 300px;
+}
+
+.off-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--dsw-alias-border-l2, #3a3a3a);
+  border-top-color: var(--dsw-alias-brand-primary, #60a5fa);
+  border-radius: 50%;
+  animation: off-spin 0.8s linear infinite;
+}
+
+@keyframes off-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .off-spinner {
+    animation-duration: 2s;
+  }
+}

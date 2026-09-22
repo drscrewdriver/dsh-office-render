@@ -1,0 +1,19 @@
+# dsh-office-render bundle patch
+#
+# Assembly layer for the DSH profiles whose bundle list includes this package.
+# A pure addition: one insert row with an id no shipped entry uses.
+#
+# ⚠️ 这一步只是「插入行」。完整手动安装是三步（只做第 1、3 步 = 插件永不加载且不报错）：
+#      1) 复制本包到 ~/.dsh/profiles/<profile>/node_modules/
+#      2) 把 "dsh-office-render" 加进该 profile package.json 的 dsh.profile.bundles 数组
+#      3) 把下面的 insert 行追加到该 profile 的 cordis.patch.yml
+#
+#    验证（无需启动）：dsh --profile <profile> --dump-config | Select-String dsh-office-render
+#
+# 推荐方式（官方 CLI，会一并维护依赖与 bundles）：
+#    dsh plugin --profile <profile> add <path | npm 包 | github:owner/repo#<sha>>
+#
+# 两种方式二选一，勿重复注册。
+- insert:
+    - id: dsh-office-render
+      name: dsh-office-render

@@ -1,0 +1,104 @@
+{
+  "name": "dsh-office-render",
+  "version": "0.1.0",
+  "description": "DSH plugin: render .docx / .pptx / .xlsx in the sidebar with faithful layout by converting them to PDF through a locally installed Office-compatible suite (WPS Office or Microsoft Office), then handing the PDF to the sidebar's built-in PDF viewer. Falls back to whatever viewer would otherwise claim the extension when no converter is available.",
+  "type": "module",
+  "main": "lib/index.mjs",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.mjs"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "scripts/convert-office.ps1",
+    "scripts/smoke.mjs",
+    "assets",
+    "screenshots.json",
+    "cordis.patch.yml",
+    "dsh.plugin.json",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "better-sidebar",
+    "office",
+    "docx",
+    "pptx",
+    "pdf",
+    "layout",
+    "wps"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public",
+    "tag": "latest"
+  },
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.1.5-rc.1 <0.2.0-0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-client-locale": ">=0.1.5-rc.1 <0.2.0-0",
+    "dsh-better-sidebar": ">=0.18.1",
+    "react": "^18.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-client-locale": {
+      "optional": true
+    },
+    "dsh-better-sidebar": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs && tsc -p tsconfig.build.json",
+    "build:bundle": "node scripts/build.mjs",
+    "build:types": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node tests/office-render.test.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "verify": "npm run build && npm test",
+    "publish:npm": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-npm.ps1",
+    "profile:migrate": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/migrate-profile.ps1",
+    "clean": "node -e \"require('node:fs').rmSync('lib',{recursive:true,force:true})\"",
+    "prepublishOnly": "npm run verify"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "~18.3.1",
+    "@types/react-dom": "~18.3.7",
+    "esbuild": "^0.21.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typescript": "^5.6.0"
+  }
+}
